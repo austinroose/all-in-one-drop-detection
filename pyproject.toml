@@ -32,6 +32,9 @@ dependencies = [
   "omegaconf",
   "huggingface_hub",
   "matplotlib",
+  "python-dotenv",
+  "google-api-python-client",
+  "google-auth",
 ]
 
 [project.optional-dependencies]

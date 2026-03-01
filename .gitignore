@@ -236,6 +236,10 @@ pyrightconfig.json
 src/outputs
 src/wandb
 src/data
+src/downloaded_files
+
+# drive api secret service account file
+src/allin1/service_account.json
 
 notes.txt
 
