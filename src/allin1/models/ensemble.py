@@ -21,6 +21,7 @@ class Ensemble(nn.Module):
     outputs: List[AllInOneOutput] = [model(x) for model in self.models]
     avg = AllInOneOutput(
       logits_beat=torch.stack([output.logits_beat for output in outputs], dim=0).mean(dim=0),
+      logits_drop=torch.stack([output.logits_drop for output in outputs], dim=0).mean(dim=0),
       logits_downbeat=torch.stack([output.logits_downbeat for output in outputs], dim=0).mean(dim=0),
       logits_section=torch.stack([output.logits_section for output in outputs], dim=0).mean(dim=0),
       logits_function=torch.stack([output.logits_function for output in outputs], dim=0).mean(dim=0),

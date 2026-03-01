@@ -5,6 +5,8 @@ from ..config import Config, HARMONIX_LABELS
 from .helpers import local_maxima, peak_picking, event_frames_to_time
 
 
+# why here we use this custom logic not just beatevaluation for postprocess scores, because 
+# in compute_metrics step of trainer beatevaluation is used also for sections for example
 def postprocess_functional_structure(
   logits: AllInOneOutput,
   cfg: Config,

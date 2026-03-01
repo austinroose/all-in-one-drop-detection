@@ -232,4 +232,11 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+# ignore outputs from training and wandb
+src/outputs
+src/wandb
+src/data
+
+notes.txt
+
 # End of https://www.toptal.com/developers/gitignore/api/python,macos,linux

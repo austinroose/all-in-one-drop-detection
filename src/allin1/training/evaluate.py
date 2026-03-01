@@ -1,6 +1,7 @@
 import numpy as np
 
 import os
+from allin1.postprocessing.drop_processing import postprocess_drops
 import wandb
 import mir_eval
 
@@ -136,10 +137,13 @@ def compute_postprocessed_scores_step(
   inputs, outputs, preds = predict_output
 
   pred_functional = postprocess_functional_structure(outputs, cfg)
+  pred_drops = postprocess_drops(outputs, cfg)
   pred_metrical = postprocess_metrical_structure(outputs, cfg)
 
   eval_beat = BeatEvaluation(pred_metrical['beats'], inputs['true_beat_times'][0])
   eval_downbeat = BeatEvaluation(pred_metrical['downbeats'], inputs['true_downbeat_times'][0])
+  # TODO: temporarily use beatevluation for also drop eval using eval_drop
+  eval_drop = BeatEvaluation(pred_drops, inputs['true_drop_times'][0])
 
   scores_metrical = {
     'beat/f1': eval_beat.fmeasure,
@@ -147,6 +151,11 @@ def compute_postprocessed_scores_step(
     'beat/recall': eval_beat.recall,
     'beat/cmlt': eval_beat.cmlt,
     'beat/amlt': eval_beat.amlt,
+    'drop/f1': eval_drop.fmeasure,
+    'drop/precision': eval_drop.precision,
+    'drop/recall': eval_drop.recall,
+    'drop/cmlt': eval_drop.cmlt,
+    'drop/amlt': eval_drop.amlt,
     'downbeat/f1': eval_downbeat.fmeasure,
     'downbeat/precision': eval_downbeat.precision,
     'downbeat/recall': eval_downbeat.recall,

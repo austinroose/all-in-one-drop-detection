@@ -37,6 +37,8 @@ class HarmonixDataModule(LightningDataModule):
       #   self.dataset_test = Subset(self.dataset_test, range(1))
   
   def train_dataloader(self):
+    dataset_size = len(self.dataset_train)
+    print(f"Dataset size: {dataset_size}")
     return DataLoader(
       self.dataset_train,
       batch_size=self.cfg.batch_size,

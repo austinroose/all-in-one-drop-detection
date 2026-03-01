@@ -130,6 +130,10 @@ class AllInOneTrainer(LightningModule):
       outputs.logits_beat, batch['widen_true_beat'],
       reduction='none',
     )
+    loss_drop = F.binary_cross_entropy_with_logits(
+      outputs.logits_drop, batch['widen_true_drop'],
+      reduction='none',
+    )
     loss_downbeat = F.binary_cross_entropy_with_logits(
       outputs.logits_downbeat, batch['widen_true_downbeat'],
       reduction='none',
@@ -144,15 +148,19 @@ class AllInOneTrainer(LightningModule):
     )
 
     loss_beat = torch.mean(batch['mask'] * loss_beat)
+    loss_drop = torch.mean(batch['mask'] * loss_drop)
     loss_downbeat = torch.mean(batch['mask'] * loss_downbeat)
     loss_section = torch.mean(batch['mask'] * loss_section)
     loss_function = torch.mean(batch['mask'] * loss_function)
 
     loss_beat *= self.cfg.loss_weight_beat
+    loss_drop *= self.cfg.loss_weight_drop
     loss_downbeat *= self.cfg.loss_weight_downbeat
     loss_section *= self.cfg.loss_weight_section
     loss_function *= self.cfg.loss_weight_function
 
+    # TODO: Can I add here condition such that only drop loss is learned or 
+    # would I still need to remove other parameters of the model for it to learn efficiently
     if self.cfg.learn_rhythm:
       loss += loss_beat + loss_downbeat
     if self.cfg.learn_structure:
@@ -163,6 +171,7 @@ class AllInOneTrainer(LightningModule):
 
     losses.update(
       loss=loss,
+      loss_drop=loss_drop,
       loss_beat=loss_beat,
       loss_downbeat=loss_downbeat,
       loss_section=loss_section,
@@ -174,21 +183,26 @@ class AllInOneTrainer(LightningModule):
 
   def compute_predictions(self, outputs: AllInOneOutput, mask=None):
     raw_prob_beats = torch.sigmoid(outputs.logits_beat.detach())
+    raw_prob_drops = torch.sigmoid(outputs.logits_drop.detach())
     raw_prob_downbeats = torch.sigmoid(outputs.logits_downbeat.detach())
     raw_prob_sections = torch.sigmoid(outputs.logits_section.detach())
     raw_prob_functions = torch.softmax(outputs.logits_function.detach(), dim=1)
 
     prob_beats, _ = local_maxima(raw_prob_beats, filter_size=self.cfg.min_hops_per_beat + 1)
+    # TODO: In this prob_drops not sure about 4 times min hops per beat, might need to research this
+    prob_drops, _ = local_maxima(raw_prob_drops, filter_size=4 * self.cfg.min_hops_per_beat + 1)
     prob_downbeats, _ = local_maxima(raw_prob_downbeats, filter_size=4 * self.cfg.min_hops_per_beat + 1)
     prob_sections, _ = local_maxima(raw_prob_sections, filter_size=4 * self.cfg.min_hops_per_beat + 1)
     prob_functions = raw_prob_functions.cpu().numpy()
 
     if mask is not None:
       prob_beats *= mask
+      prob_drops *= mask
       prob_downbeats *= mask
       prob_sections *= mask
 
     pred_beats = prob_beats > self.cfg.threshold_beat
+    pred_drops = prob_drops > self.cfg.threshold_drop
     pred_downbeats = prob_downbeats > self.cfg.threshold_downbeat
     pred_sections = prob_sections > self.cfg.threshold_section
     pred_functions = np.argmax(prob_functions, axis=1)
@@ -196,26 +210,31 @@ class AllInOneTrainer(LightningModule):
       pred_functions = np.where(mask.cpu().numpy(), pred_functions, -1)
 
     pred_beat_times = self.tensor_to_time(pred_beats)
+    pred_drop_times = self.tensor_to_time(pred_drops)
     pred_downbeat_times = self.tensor_to_time(pred_downbeats)
     pred_section_times = self.tensor_to_time(pred_sections)
 
     p = AllInOnePrediction(
       raw_prob_beats=raw_prob_beats,
+      raw_prob_drops=raw_prob_drops,
       raw_prob_downbeats=raw_prob_downbeats,
       raw_prob_sections=raw_prob_sections,
       raw_prob_functions=raw_prob_functions,
 
       prob_beats=prob_beats,
+      prob_drops=prob_drops,
       prob_downbeats=prob_downbeats,
       prob_sections=prob_sections,
       prob_functions=prob_functions,
 
       pred_beats=pred_beats,
+      pred_drops=pred_drops,
       pred_downbeats=pred_downbeats,
       pred_sections=pred_sections,
       pred_functions=pred_functions,
 
       pred_beat_times=pred_beat_times,
+      pred_drop_times=pred_drop_times,
       pred_downbeat_times=pred_downbeat_times,
       pred_section_times=pred_section_times,
     )
@@ -226,6 +245,11 @@ class AllInOneTrainer(LightningModule):
     eval_beat = [
       BeatEvaluation(pred, true)
       for pred, true in zip(p.pred_beat_times, batch['true_beat_times'])
+      if len(pred) > 1 and len(true) > 1
+    ]
+    eval_drop = [
+      BeatEvaluation(pred, true, fmeasure_window=0.5)
+      for pred, true in zip(p.pred_drop_times, batch['true_drop_times'])
       if len(pred) > 1 and len(true) > 1
     ]
     eval_downbeat = [
@@ -240,6 +264,7 @@ class AllInOneTrainer(LightningModule):
     ]
 
     score_beat = BeatMeanEvaluation(eval_beat)
+    score_drop = BeatMeanEvaluation(eval_drop)
     score_downbeat = BeatMeanEvaluation(eval_downbeat)
     score_section = BeatMeanEvaluation(eval_section)
 
@@ -268,6 +293,11 @@ class AllInOneTrainer(LightningModule):
       downbeat_recall=score_downbeat.recall,
       downbeat_cmlt=score_downbeat.cmlt,
       downbeat_amlt=score_downbeat.amlt,
+      drop_f1=score_drop.fmeasure,
+      drop_precision=score_drop.precision,
+      drop_recall=score_drop.recall,
+      drop_cmlt=score_drop.cmlt,
+      drop_amlt=score_drop.amlt,
       section_f1=score_section.fmeasure,
       section_precision=score_section.precision,
       section_recall=score_section.recall,

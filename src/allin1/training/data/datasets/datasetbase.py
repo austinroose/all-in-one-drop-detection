@@ -73,30 +73,37 @@ class DatasetBase(Dataset, ABC):
     # Normalization should be done here, but it seems madmom does it for us.
 
     true_beat = st.beat.of_frames(encode=True)
+    true_drop = st.drop.of_frames(encode=True)
     true_downbeat = st.downbeat.of_frames(encode=True)
+    print(f"SECTION TIMES: {st.section.times}")
     true_section = st.section.of_frames(encode=True, return_labels=False)
     true_function = st.section.of_frames(encode=True, return_labels=True)
     true_function_list = st.section.labels
+
 
     # widen the temporal activation
     # region around the annotations to include two adjacent temporal
     # frames on either side of each quantised beat location and
     # weight them with a value of 0.5 during training.
     widen_true_beat = widen_temporal_events(true_beat, num_neighbors=1)
+    widen_true_drop = widen_temporal_events(true_drop, num_neighbors=1)
     widen_true_downbeat = widen_temporal_events(true_downbeat, num_neighbors=1)
     widen_true_section = widen_temporal_events(true_section, num_neighbors=2)
 
     true_beat_times = st.beat.times
+    true_drop_times = st.drop.times
     true_downbeat_times = st.downbeat.times
     true_section_times = st.section.times
 
     if should_segment:
       end_time = start + self.segment_size
       true_beat_times = true_beat_times[(start <= true_beat_times) & (true_beat_times < end_time)]
+      true_drop_times = true_drop_times[(start <= true_drop_times) & (true_drop_times < end_time)]
       true_downbeat_times = true_downbeat_times[(start <= true_downbeat_times) & (true_downbeat_times < end_time)]
       true_section_times = true_section_times[(start <= true_section_times) & (true_section_times < end_time)]
 
       true_beat_times -= start
+      true_drop_times -= start
       true_downbeat_times -= start
       true_section_times -= start
 
@@ -105,15 +112,18 @@ class DatasetBase(Dataset, ABC):
       spec=spec,
 
       true_beat=true_beat,
+      true_drop=true_drop,
       true_downbeat=true_downbeat,
       true_section=true_section,
       true_function=true_function,
 
       widen_true_beat=widen_true_beat,
+      widen_true_drop=widen_true_drop,
       widen_true_downbeat=widen_true_downbeat,
       widen_true_section=widen_true_section,
 
       true_beat_times=true_beat_times.tolist(),
+      true_drop_times=true_drop_times.tolist(),
       true_downbeat_times=true_downbeat_times.tolist(),
       true_section_times=true_section_times.tolist(),
       true_function_list=true_function_list.tolist(),

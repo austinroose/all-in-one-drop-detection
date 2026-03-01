@@ -1,7 +1,7 @@
 import pandas as pd
 from abc import ABC, abstractmethod
 from pathlib import Path
-from .eventconverters import BeatConverter, DownbeatConverter, SectionConverter
+from .eventconverters import BeatConverter, DownbeatConverter, SectionConverter, DropConverter
 from ....typings import PathLike
 from ....config import HARMONIX_LABELS
 
@@ -11,6 +11,11 @@ class DatasetConverter(ABC):
   @property
   @abstractmethod
   def beat(self) -> BeatConverter:
+    pass
+
+  @property
+  @abstractmethod
+  def drop(self) -> DropConverter:
     pass
 
   @property
@@ -45,16 +50,25 @@ class HarmonixConverter(DatasetConverter):
     self.start = start
     self.end = end
 
+    # TODO: change these read_csv-s to correctly read the column separators such that data gets correctly parsed
     self.df_beat = pd.read_csv(
       self.base_dir / 'beats' / f'{self.track_id}.txt',
       names=['time', 'count'],
-      delimiter='\t'
+      delimiter=r'\s+',  # Match any whitespace
+      engine='python' # TODO: do we need to use here usecols parameter as well as there are more columns than 2 in file
+    )
+    self.df_drop = pd.read_csv(
+      self.base_dir / 'drop' / f'{self.track_id}.txt',
+      names=['time'],
+      delimiter=r'\s+',  # Match any whitespace
+      engine='python'
     )
     self.df_downbeat = self.df_beat[self.df_beat['count'] == 1]
     self.df_section = pd.read_csv(
       self.base_dir / 'segments' / f'{self.track_id}.txt',
       names=['start', 'name'],
-      delimiter='\t',
+      delimiter=r'\s+',  # Match any whitespace
+      engine='python'
     )
 
     section_times = self.df_section['start'].values
@@ -64,6 +78,14 @@ class HarmonixConverter(DatasetConverter):
 
     self._beat = BeatConverter(
       self.df_beat['time'].values,
+      segment_frames=total_frames,
+      sr=sr,
+      hop=hop,
+      start=start,
+      end=end,
+    )
+    self._drop = DropConverter(
+      self.df_drop['time'].values,
       segment_frames=total_frames,
       sr=sr,
       hop=hop,
@@ -93,6 +115,10 @@ class HarmonixConverter(DatasetConverter):
   @property
   def beat(self) -> BeatConverter:
     return self._beat
+
+  @property
+  def drop(self) -> DropConverter:
+    return self._drop
 
   @property
   def downbeat(self) -> DownbeatConverter:

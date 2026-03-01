@@ -14,6 +14,7 @@ PathLike = Union[str, PathLike]
 @dataclass
 class AllInOneOutput:
   logits_beat: torch.FloatTensor = None
+  logits_drop: torch.FloatTensor = None
   logits_downbeat: torch.FloatTensor = None
   logits_section: torch.FloatTensor = None
   logits_function: torch.FloatTensor = None
@@ -32,6 +33,7 @@ class AnalysisResult:
   path: Path
   bpm: int
   beats: List[float]
+  drops: List[float]
   downbeats: List[float]
   beat_positions: List[int]
   segments: List[Segment]
@@ -54,6 +56,7 @@ class AnalysisResult:
       path=mkpath(data['path']),
       bpm=data['bpm'],
       beats=data['beats'],
+      drops=data['drops'],
       downbeats=data['downbeats'],
       beat_positions=data['beat_positions'],
       segments=[Segment(**seg) for seg in data['segments']],
@@ -76,20 +79,24 @@ class AnalysisResult:
 @dataclass
 class AllInOnePrediction:
   raw_prob_beats: torch.FloatTensor
+  raw_prob_drops: torch.FloatTensor
   raw_prob_downbeats: torch.FloatTensor
   raw_prob_sections: torch.FloatTensor
   raw_prob_functions: torch.FloatTensor
 
   prob_beats: torch.FloatTensor
+  prob_drops: torch.FloatTensor
   prob_downbeats: torch.FloatTensor
   prob_sections: torch.FloatTensor
   prob_functions: NDArray[np.float32]
 
   pred_beats: NDArray[np.float32]
+  pred_drops: NDArray[np.float32]
   pred_downbeats: NDArray[np.float32]
   pred_sections: NDArray[np.float32]
   pred_functions: NDArray[np.float32]
 
   pred_beat_times: NDArray[np.float32]
+  pred_drop_times: NDArray[np.float32]
   pred_downbeat_times: NDArray[np.float32]
   pred_section_times: NDArray[np.float32]

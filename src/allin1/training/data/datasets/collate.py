@@ -18,8 +18,8 @@ def collate_fn(raw_batch):
       if key in ['track_key', 'true_bpm', 'widen_true_bpm', 'true_bpm_int']:
         data[key] = value
       elif key in [
-        'true_beat', 'true_downbeat', 'true_section', 'true_function',
-        'widen_true_beat', 'widen_true_downbeat', 'widen_true_section',
+        'true_beat', 'true_drop', 'true_downbeat', 'true_section', 'true_function',
+        'widen_true_beat', 'widen_true_drop', 'widen_true_downbeat', 'widen_true_section',
       ]:
         data[key] = value[:max_T]
       elif key in ['spec']:

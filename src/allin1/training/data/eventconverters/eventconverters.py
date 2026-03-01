@@ -98,6 +98,8 @@ class BeatConverter(EventConverter):
 class DownbeatConverter(EventConverter):
   pass
 
+class DropConverter(EventConverter):
+  pass
 
 class SectionConverter(EventConverter):
   

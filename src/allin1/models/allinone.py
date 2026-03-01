@@ -26,6 +26,7 @@ class AllInOne(nn.Module):
     self.norm = nn.LayerNorm(cfg.dim_embed, eps=cfg.layer_norm_eps)
 
     self.beat_classifier = Head(num_classes=1, cfg=cfg, init_confidence=0.05)
+    self.drop_classifier = Head(num_classes=1, cfg=cfg, init_confidence=0.001)
     self.downbeat_classifier = Head(num_classes=1, cfg=cfg, init_confidence=0.0125)
     self.section_classifier = Head(num_classes=1, cfg=cfg, init_confidence=0.001)
     self.function_classifier = Head(num_classes=cfg.data.num_labels, cfg=cfg)
@@ -59,12 +60,14 @@ class AllInOne(nn.Module):
     hidden_states = self.dropout(hidden_states)
 
     logits_beat = self.beat_classifier(hidden_states)
+    logits_drop = self.drop_classifier(hidden_states)
     logits_downbeat = self.downbeat_classifier(hidden_states)
     logits_section = self.section_classifier(hidden_states)
     logits_function = self.function_classifier(hidden_states)
 
     return AllInOneOutput(
       logits_beat=logits_beat,
+      logits_drop=logits_drop,
       logits_downbeat=logits_downbeat,
       logits_section=logits_section,
       logits_function=logits_function,

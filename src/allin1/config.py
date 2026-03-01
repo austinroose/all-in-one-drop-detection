@@ -90,6 +90,7 @@ class Config:
   learn_structure: bool = True
   learn_segment: bool = True
   learn_label: bool = True
+  learn_drop: bool = True # TODO: Turn on and off drop detection
 
   # Training configurations -----------------------------------------------
   segment_size: Optional[float] = 300
@@ -104,7 +105,7 @@ class Config:
   warmup_epochs: int = 0
   cooldown_epochs: int = 0
   min_lr: float = 1e-7
-  max_epochs: int = -1
+  max_epochs: int = 1
 
   # Plateau scheduler.
   decay_rate: float = 0.3
@@ -121,6 +122,7 @@ class Config:
 
   # Model configurations --------------------------------------------------
   threshold_beat: float = 0.19
+  threshold_drop: float = 0.05 # TODO: Might need to higher this to make it easier to train
   threshold_downbeat: float = 0.19
   threshold_section: float = 0.05
 
@@ -154,13 +156,14 @@ class Config:
 
   # Loss configurations ---------------------------------------------------
   loss_weight_beat: float = 1.
+  loss_weight_drop: float = 15.
   loss_weight_downbeat: float = 3.
   loss_weight_section: float = 15.
   loss_weight_function: float = 0.1
 
   # Misc ------------------------------------------------------------------
   seed: int = 1234
-  fold: int = 2
+  fold: int = 1
   aafold: Optional[int] = None
   total_folds: int = 8
 
