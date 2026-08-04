@@ -50,34 +50,39 @@ class HarmonixConverter(DatasetConverter):
     self.start = start
     self.end = end
 
-    # TODO: change these read_csv-s to correctly read the column separators such that data gets correctly parsed
+    # Harmonix beat files are tab-separated with 3 columns (time, count, bar).
+    # Segment files are space-separated (time, label). Use whitespace splitting
+    # for both, and name every beat column so the time column is not treated as index.
     self.df_beat = pd.read_csv(
       self.base_dir / 'beats' / f'{self.track_id}.txt',
-      names=['time', 'count'],
-      delimiter=r'\s+',  # Match any whitespace
-      engine='python' # TODO: do we need to use here usecols parameter as well as there are more columns than 2 in file
+      names=['time', 'count', 'bar'],
+      sep=r'\s+',
+      engine='python',
+      usecols=[0, 1],
     )
     self.df_drop = pd.read_csv(
       self.base_dir / 'drop' / f'{self.track_id}.txt',
       names=['time'],
-      delimiter=r'\s+',  # Match any whitespace
-      engine='python'
+      sep=r'\s+',
+      engine='python',
     )
     self.df_downbeat = self.df_beat[self.df_beat['count'] == 1]
     self.df_section = pd.read_csv(
       self.base_dir / 'segments' / f'{self.track_id}.txt',
       names=['start', 'name'],
-      delimiter=r'\s+',  # Match any whitespace
-      engine='python'
+      sep=r'\s+',
+      engine='python',
     )
 
-    section_times = self.df_section['start'].values
-    section_labels = self.df_section['name'].values.tolist()
-    # if section_times[0] > 0.0:
+    beat_times = self.df_beat['time'].astype(float).to_numpy()
+    drop_times = self.df_drop['time'].astype(float).to_numpy()
+    downbeat_times = self.df_downbeat['time'].astype(float).to_numpy()
+    section_times = self.df_section['start'].astype(float).to_numpy()
+    section_labels = self.df_section['name'].astype(str).tolist()
     section_labels = ['start'] + section_labels
 
     self._beat = BeatConverter(
-      self.df_beat['time'].values,
+      beat_times,
       segment_frames=total_frames,
       sr=sr,
       hop=hop,
@@ -85,7 +90,7 @@ class HarmonixConverter(DatasetConverter):
       end=end,
     )
     self._drop = DropConverter(
-      self.df_drop['time'].values,
+      drop_times,
       segment_frames=total_frames,
       sr=sr,
       hop=hop,
@@ -93,7 +98,7 @@ class HarmonixConverter(DatasetConverter):
       end=end,
     )
     self._downbeat = DownbeatConverter(
-      self.df_downbeat['time'].values,
+      downbeat_times,
       segment_frames=total_frames,
       sr=sr,
       hop=hop,

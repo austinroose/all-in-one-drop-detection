@@ -75,7 +75,6 @@ class DatasetBase(Dataset, ABC):
     true_beat = st.beat.of_frames(encode=True)
     true_drop = st.drop.of_frames(encode=True)
     true_downbeat = st.downbeat.of_frames(encode=True)
-    print(f"SECTION TIMES: {st.section.times}")
     true_section = st.section.of_frames(encode=True, return_labels=False)
     true_function = st.section.of_frames(encode=True, return_labels=True)
     true_function_list = st.section.labels
