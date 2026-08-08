@@ -1,6 +1,6 @@
 import numpy as np
 
-import os
+# import os
 from allin1.postprocessing.drop_processing import postprocess_drops
 import wandb
 import mir_eval
@@ -10,7 +10,7 @@ from typing import List, Tuple, Dict, Mapping
 from functools import partial
 from tqdm import tqdm
 from lightning import Trainer
-from torch.multiprocessing import Pool
+# from torch.multiprocessing import Pool
 from madmom.evaluation.beats import BeatEvaluation
 
 from .data import HarmonixDataModule
@@ -107,20 +107,33 @@ def compute_postprocessed_scores(
   prefix: str = '',
 ):
   all_scores: List[Mapping[str, float]] = []
+  fn = partial(
+    compute_postprocessed_scores_step,
+    cfg=cfg,
+  )
+  # Run sequentially. torch.multiprocessing.Pool often deadlocks in Colab/Jupyter
+  # and is unnecessary for GPU training (this step is CPU-bound scoring only).
+  iterator = tqdm(
+    map(fn, predict_outputs),
+    total=len(predict_outputs),
+    desc='Postprocessing...',
+  )
+  for result in iterator:
+    all_scores.append(result)
 
-  with Pool(os.cpu_count() // 2) as pool:
-    fn = partial(
-      compute_postprocessed_scores_step,
-      cfg=cfg,
-    )
-    if cfg.debug:
-      iterator = map(fn, predict_outputs)
-    else:
-      iterator = pool.imap(fn, predict_outputs)
-    iterator = tqdm(iterator, total=len(predict_outputs), desc='Postprocessing...')
-
-    for result in iterator:
-      all_scores.append(result)
+  # Previous multiprocessed version (can hang in Colab/Jupyter):
+  # with Pool(os.cpu_count() // 2) as pool:
+  #   fn = partial(
+  #     compute_postprocessed_scores_step,
+  #     cfg=cfg,
+  #   )
+  #   if cfg.debug:
+  #     iterator = map(fn, predict_outputs)
+  #   else:
+  #     iterator = pool.imap(fn, predict_outputs)
+  #   iterator = tqdm(iterator, total=len(predict_outputs), desc='Postprocessing...')
+  #   for result in iterator:
+  #     all_scores.append(result)
 
   avg_scores = {
     f'{prefix}{k}': np.mean([scores[k] for scores in all_scores])
@@ -128,6 +141,7 @@ def compute_postprocessed_scores(
   }
 
   return avg_scores
+
 
 
 def compute_postprocessed_scores_step(
