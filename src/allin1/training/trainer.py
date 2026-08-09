@@ -1,5 +1,6 @@
 import warnings
 import librosa
+import mir_eval
 import numpy as np
 import torch.nn.functional as F
 import torch
@@ -247,10 +248,22 @@ class AllInOneTrainer(LightningModule):
       for pred, true in zip(p.pred_beat_times, batch['true_beat_times'])
       if len(pred) > 1 and len(true) > 1
     ]
-    eval_drop = [
-      BeatEvaluation(pred, true, fmeasure_window=0.5)
+    # Drop files usually have a single timestamp; BeatEvaluation needs >= 2
+    # annotations, so score drops with mir_eval onset F-measure instead.
+    # Previous approach:
+    # eval_drop = [
+    #   BeatEvaluation(pred, true, fmeasure_window=0.5)
+    #   for pred, true in zip(p.pred_drop_times, batch['true_drop_times'])
+    #   if len(pred) > 1 and len(true) > 1
+    # ]
+    # score_drop = BeatMeanEvaluation(eval_drop)
+    drop_scores = [
+      mir_eval.onset.f_measure(
+        np.asarray(true, dtype=float),
+        np.asarray(pred, dtype=float),
+        window=0.5,
+      )
       for pred, true in zip(p.pred_drop_times, batch['true_drop_times'])
-      if len(pred) > 1 and len(true) > 1
     ]
     eval_downbeat = [
       BeatEvaluation(pred, true)
@@ -264,7 +277,12 @@ class AllInOneTrainer(LightningModule):
     ]
 
     score_beat = BeatMeanEvaluation(eval_beat)
-    score_drop = BeatMeanEvaluation(eval_drop)
+    if drop_scores:
+      drop_f1 = float(np.mean([s[0] for s in drop_scores]))
+      drop_precision = float(np.mean([s[1] for s in drop_scores]))
+      drop_recall = float(np.mean([s[2] for s in drop_scores]))
+    else:
+      drop_f1 = drop_precision = drop_recall = 0.0
     score_downbeat = BeatMeanEvaluation(eval_downbeat)
     score_section = BeatMeanEvaluation(eval_section)
 
@@ -293,11 +311,9 @@ class AllInOneTrainer(LightningModule):
       downbeat_recall=score_downbeat.recall,
       downbeat_cmlt=score_downbeat.cmlt,
       downbeat_amlt=score_downbeat.amlt,
-      drop_f1=score_drop.fmeasure,
-      drop_precision=score_drop.precision,
-      drop_recall=score_drop.recall,
-      drop_cmlt=score_drop.cmlt,
-      drop_amlt=score_drop.amlt,
+      drop_f1=drop_f1,
+      drop_precision=drop_precision,
+      drop_recall=drop_recall,
       section_f1=score_section.fmeasure,
       section_precision=score_section.precision,
       section_recall=score_section.recall,

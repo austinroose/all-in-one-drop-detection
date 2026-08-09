@@ -156,8 +156,17 @@ def compute_postprocessed_scores_step(
 
   eval_beat = BeatEvaluation(pred_metrical['beats'], inputs['true_beat_times'][0])
   eval_downbeat = BeatEvaluation(pred_metrical['downbeats'], inputs['true_downbeat_times'][0])
-  # TODO: temporarily use beatevluation for also drop eval using eval_drop
-  eval_drop = BeatEvaluation(pred_drops, inputs['true_drop_times'][0])
+  # Drop labels are usually a single timestamp per track, so use onset F-measure
+  # instead of madmom BeatEvaluation (needs >= 2 annotations for P-Score).
+  # Previous approach:
+  # eval_drop = BeatEvaluation(pred_drops, inputs['true_drop_times'][0])
+  true_drop_times = np.asarray(inputs['true_drop_times'][0], dtype=float)
+  pred_drop_times = np.asarray(pred_drops, dtype=float)
+  drop_f1, drop_precision, drop_recall = mir_eval.onset.f_measure(
+    true_drop_times,
+    pred_drop_times,
+    window=0.5,
+  )
 
   scores_metrical = {
     'beat/f1': eval_beat.fmeasure,
@@ -165,11 +174,9 @@ def compute_postprocessed_scores_step(
     'beat/recall': eval_beat.recall,
     'beat/cmlt': eval_beat.cmlt,
     'beat/amlt': eval_beat.amlt,
-    'drop/f1': eval_drop.fmeasure,
-    'drop/precision': eval_drop.precision,
-    'drop/recall': eval_drop.recall,
-    'drop/cmlt': eval_drop.cmlt,
-    'drop/amlt': eval_drop.amlt,
+    'drop/f1': drop_f1,
+    'drop/precision': drop_precision,
+    'drop/recall': drop_recall,
     'downbeat/f1': eval_downbeat.fmeasure,
     'downbeat/precision': eval_downbeat.precision,
     'downbeat/recall': eval_downbeat.recall,
