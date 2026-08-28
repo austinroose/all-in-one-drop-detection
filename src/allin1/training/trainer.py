@@ -164,6 +164,8 @@ class AllInOneTrainer(LightningModule):
     # would I still need to remove other parameters of the model for it to learn efficiently
     if self.cfg.learn_rhythm:
       loss += loss_beat + loss_downbeat
+    if self.cfg.learn_drop:
+      loss += loss_drop
     if self.cfg.learn_structure:
       if self.cfg.learn_label:
         loss += loss_function
