@@ -26,7 +26,7 @@ class AllInOne(nn.Module):
     self.norm = nn.LayerNorm(cfg.dim_embed, eps=cfg.layer_norm_eps)
 
     self.beat_classifier = Head(num_classes=1, cfg=cfg, init_confidence=0.05)
-    self.drop_classifier = Head(num_classes=1, cfg=cfg, init_confidence=0.001)
+    self.drop_classifier = Head(num_classes=1, cfg=cfg, init_confidence=0.01)
     self.downbeat_classifier = Head(num_classes=1, cfg=cfg, init_confidence=0.0125)
     self.section_classifier = Head(num_classes=1, cfg=cfg, init_confidence=0.001)
     self.function_classifier = Head(num_classes=cfg.data.num_labels, cfg=cfg)

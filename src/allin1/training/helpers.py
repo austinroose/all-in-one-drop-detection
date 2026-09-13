@@ -1,3 +1,4 @@
+import mir_eval
 import numpy as np
 import torch.nn.functional as F
 
@@ -105,19 +106,25 @@ def local_maxima(tensor, filter_size=41):
 
 def find_best_thresholds(predict_outputs, cfg: Config):
   probs_beat, trues_beat = [], []
+  probs_drop, trues_drop = [], []
   probs_downbeat, trues_downbeat = [], []
   for inputs, outputs, preds in predict_outputs:
     preds: AllInOnePrediction
     probs_beat.append(preds.raw_prob_beats[0])
+    probs_drop.append(preds.raw_prob_drops[0])
     probs_downbeat.append(preds.raw_prob_downbeats[0])
     trues_beat.append(inputs['true_beat_times'][0])
+    trues_drop.append(inputs['true_drop_times'][0])
     trues_downbeat.append(inputs['true_downbeat_times'][0])
 
-  print('=> Start finding best thresholds for beat and downbeat...')
+  print('=> Start finding best thresholds for beat, drop, and downbeat...')
   threshold_beat, _ = find_best_threshold(probs_beat, trues_beat, cfg, cfg.min_hops_per_beat + 1)
+  threshold_drop, _ = find_best_drop_threshold(
+    probs_drop, trues_drop, cfg, 4 * cfg.min_hops_per_beat + 1,
+  )
   threshold_downbeat, _ = find_best_threshold(probs_downbeat, trues_downbeat, cfg, 4 * cfg.min_hops_per_beat + 1)
 
-  return threshold_beat, threshold_downbeat
+  return threshold_beat, threshold_drop, threshold_downbeat
 
 
 def find_best_threshold(probs, trues, cfg: Config, filter_size: int):
@@ -136,4 +143,27 @@ def find_best_threshold(probs, trues, cfg: Config, filter_size: int):
     results[threshold] = BeatMeanEvaluation(results[threshold])
 
   best_threshold = max(results, key=lambda k: results[k].fmeasure)
+  return best_threshold, results[best_threshold]
+
+
+def find_best_drop_threshold(probs, trues, cfg: Config, filter_size: int):
+  results = {}
+  for threshold in tqdm(
+    np.linspace(0, 0.5, 51),
+    desc='Finding best drop threshold...',
+  ):
+    scores = []
+    for prob, true in zip(probs, trues):
+      lmprob_drops, _ = local_maxima(prob, filter_size=filter_size)
+      pred_drops = (lmprob_drops > threshold).numpy()
+      pred_drop_times = event_frames_to_time(pred_drops, cfg)
+      drop_f1, _, _ = mir_eval.onset.f_measure(
+        np.asarray(true, dtype=float),
+        np.asarray(pred_drop_times, dtype=float),
+        window=0.5,
+      )
+      scores.append(drop_f1)
+    results[threshold] = float(np.mean(scores)) if scores else 0.0
+
+  best_threshold = max(results, key=lambda k: results[k])
   return best_threshold, results[best_threshold]

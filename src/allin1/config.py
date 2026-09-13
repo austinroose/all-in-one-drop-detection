@@ -122,11 +122,12 @@ class Config:
 
   # Model configurations --------------------------------------------------
   threshold_beat: float = 0.19
-  threshold_drop: float = 0.05 # TODO: Might need to higher this to make it easier to train
+  threshold_drop: float = 0.01
   threshold_downbeat: float = 0.19
   threshold_section: float = 0.05
 
   best_threshold_beat: Optional[float] = None
+  best_threshold_drop: Optional[float] = None
   best_threshold_downbeat: Optional[float] = None
 
   instrument_attention: bool = True

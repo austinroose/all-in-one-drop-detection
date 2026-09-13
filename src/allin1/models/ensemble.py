@@ -12,6 +12,7 @@ class Ensemble(nn.Module):
 
     cfg = models[0].cfg.copy()
     cfg.best_threshold_beat = sum([model.cfg.best_threshold_beat for model in models]) / len(models)
+    cfg.best_threshold_drop = sum([model.cfg.best_threshold_drop for model in models]) / len(models)
     cfg.best_threshold_downbeat = sum([model.cfg.best_threshold_downbeat for model in models]) / len(models)
 
     self.cfg = cfg

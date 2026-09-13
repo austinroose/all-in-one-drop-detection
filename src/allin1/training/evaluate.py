@@ -68,25 +68,31 @@ def evaluate(
     print('=> Finding best thresholds...')
     # Find the optimal thresholds.
     if (
-      'best_threshold_beat' not in run.config
-      or run.config['best_threshold_beat'] is None
+      run.config.get('best_threshold_beat') is None
+      or run.config.get('best_threshold_drop') is None
+      or run.config.get('best_threshold_downbeat') is None
     ):
       dm.setup('validate')
       outputs_val = trainer.predict(model, dataloaders=dm.val_dataloader())
-      threshold_beat, threshold_downbeat = find_best_thresholds(outputs_val, cfg)
+      threshold_beat, threshold_drop, threshold_downbeat = find_best_thresholds(outputs_val, cfg)
 
       if not cfg.debug:
         run.config.update({
           'best_threshold_beat': threshold_beat.item(),
+          'best_threshold_drop': threshold_drop.item(),
           'best_threshold_downbeat': threshold_downbeat.item(),
         }, allow_val_change=True)
         if hasattr(run, 'update'):
           run.update()
 
     cfg.threshold_beat = run.config['best_threshold_beat']
+    cfg.threshold_drop = run.config['best_threshold_drop']
     cfg.threshold_downbeat = run.config['best_threshold_downbeat']
 
-  print(f'=> Evaluating with thresholds: {cfg.threshold_beat}, {cfg.threshold_downbeat}')
+  print(
+    f'=> Evaluating with thresholds: '
+    f'beat={cfg.threshold_beat}, drop={cfg.threshold_drop}, downbeat={cfg.threshold_downbeat}'
+  )
 
   scores = trainer.test(model, datamodule=dm)[0]
   if not cfg.debug:
